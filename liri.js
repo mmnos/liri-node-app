@@ -31,7 +31,7 @@ let main = function(userCommand, userSearch) {
       break;
 
     default:
-      console.log("Please enter a correct command");
+      console.log("Invalid command");
   }
 };
 
@@ -59,21 +59,36 @@ let searchSpotify = function(song) {
   // if no song was entered, defaults to The Sign
   if (!song) {
     song = "The Sign";
+    spotify
+      .request(
+        `https://api.spotify.com/v1/search?q=${song}%20ace&type=track,artist`
+      )
+      .then(function(data) {
+        // displays data for song
+        console.log(`
+      Artist : ${data.tracks.items[0].artists[0].name}
+      Song : ${data.tracks.items[0].name}
+      Link : ${data.tracks.items[0].external_urls.spotify}
+      Album : ${data.tracks.items[0].album.name}
+      `);
+      });
+  } else {
+    // searches through spotify's api for song
+    spotify.search({ type: "track", query: song }, function(err, data) {
+      // logs error
+      if (err) {
+        return console.log("Error occurred: " + err);
+      }
+
+      // displays data for song
+      console.log(`
+      Artist : ${data.tracks.items[0].artists[0].name}
+      Song : ${data.tracks.items[0].name}
+      Link : ${data.tracks.items[0].external_urls.spotify}
+      Album : ${data.tracks.items[0].album.name}
+      `);
+    });
   }
-
-  // searches through spotify's api for song
-  spotify.search({ type: "track", query: song }, function(err, data) {
-    // logs error
-    if (err) {
-      return console.log("Error occurred: " + err);
-    }
-
-    // displays data for song
-    console.log("Artist : " + data.tracks.items[0].artists[0].name);
-    console.log("Song Name : " + data.tracks.items[0].name);
-    console.log("Link : " + data.tracks.items[0].external_urls.spotify);
-    console.log("Album : " + data.tracks.items[0].album.name);
-  });
 };
 
 let searchMovie = function(movie) {
@@ -86,14 +101,16 @@ let searchMovie = function(movie) {
 
   // requests data from api than displays info
   axios.get(movieURL).then(function(response) {
-    console.log("Title : " + response.data.Title);
-    console.log("Release Year : " + response.data.Year);
-    console.log("IMDB Rating : " + response.data.Rated);
-    console.log("Rotten Tomatoes Rating : " + response.data.Ratings[1].Value);
-    console.log("Country : " + response.data.Country);
-    console.log("Language : " + response.data.Language);
-    console.log("Plot : " + response.data.Plot);
-    console.log("Actors : " + response.data.Actors);
+    console.log(`
+    Title : ${response.data.Title}
+    Release Year : ${response.data.Year}
+    IMDB Rating : ${response.data.Rated}
+    Rotten Tomatoes Rating : ${response.data.Ratings[1].Value}
+    Country : ${response.data.Country}
+    Language : ${response.data.Language}
+    Plot : ${response.data.Plot}
+    Actors : ${response.data.Actors}
+    `);
   });
 };
 
@@ -105,14 +122,8 @@ let randomSearch = function() {
       return console.log(error);
     }
 
-    // display data
-    console.log(data);
-
     // split content with comma
     var dataArr = data.split(",");
-
-    // display data as array
-    console.log(dataArr);
 
     userCommand = dataArr[0];
     userSearch = dataArr[1];
