@@ -13,27 +13,28 @@ let userCommand = process.argv[2];
 let userSearch = process.argv.slice(3).join(" ");
 
 let main = function(userCommand, userSearch) {
+
   // case will be run depending on what user inputs
+  // no break statement because we're returning something
   switch (userCommand) {
+
     case "concert-this":
       return searchConcert(userSearch);
-      // no break statement because we're returning something
 
     case "spotify-this-song":
       return searchSpotify(userSearch);
-      // no break statement because we're returning something
 
     case "movie-this":
       return searchMovie(userSearch);
-      // no break statement because we're returning something
 
     case "do-what-it-says":
       return randomSearch();
-      // no break statement because we're returning something
 
     default:
       console.log("Invalid command");
+
   }
+
 };
 
 let searchConcert = function(artist) {
@@ -44,6 +45,7 @@ let searchConcert = function(artist) {
   return axios
     .get(bandsURL)
     .then(function(response) {
+
       let data = response.data[0];
 
       function venueData() {
@@ -58,7 +60,7 @@ let searchConcert = function(artist) {
 
     })
     .catch(function(error) {
-      // handle error
+      // logs error
       console.log(error);
     });
 };
@@ -66,7 +68,7 @@ let searchConcert = function(artist) {
 let searchSpotify = function(song) {
 
   let urlArtist = "";
-    // if no song was entered, defaults to The Sign by Ace
+  // if no song was entered, defaults to The Sign by Ace
   if (!song) {
     song = "The Sign";
     urlArtist = "%20ace";
@@ -76,20 +78,23 @@ let searchSpotify = function(song) {
       `https://api.spotify.com/v1/search?q=${song}${urlArtist}&type=track,artist`
     )
     .then(function(data) {
-      // displays data for song
-      const item = data.tracks.items[0];
 
+      const item = data.tracks.items[0];
+      
+      // displays data for song
       console.log(`
       Artist : ${item.artists[0].name}
       Song : ${item.name}
       Link : ${item.external_urls.spotify}
       Album : ${item.album.name}
       `);
+
     }).catch(err => Promise.reject(err))
   
 };
 
 let searchMovie = function(movie) {
+
   // if no movie name was entered, defaults to Mr. Nobody
   if (!movie) {
     movie = "Mr. Nobody";
@@ -99,6 +104,7 @@ let searchMovie = function(movie) {
 
   // requests data from api than displays info
   return axios.get(movieURL).then(function(response) {
+
     console.log(`
     Title : ${response.data.Title}
     Release Year : ${response.data.Year}
@@ -109,15 +115,17 @@ let searchMovie = function(movie) {
     Plot : ${response.data.Plot}
     Actors : ${response.data.Actors}
     `);
+
   });
+
 };
 
 let randomSearch = function() {
+
   // gets data from text file
   return new Promise((resolve, reject) => {
 
     fs.readFile("random.txt", "utf8", function(err, data) {
-      // logs if error
       // if error, return reject error (short circuit)
       err && reject(err);
   
@@ -131,11 +139,13 @@ let randomSearch = function() {
         userSearch : dataArr[1]
 
       });
+      
     });
   // destructuring resolved object
   }).then(({userCommand, userSearch}) => main(userCommand, userSearch))
   // main returns promise so we use a then
   .then(() => promptStart());
+
 };
 
 const promptStart = () => {
@@ -147,9 +157,9 @@ const promptStart = () => {
       message: "What command would you like to use?",
       choices: ["concert-this", "spotify-this-song", "movie-this", "do-what-it-says", "exit"]
     }
-  ).then((res) => {
-    if (res.command !== "do-what-it-says" && res.command !== "exit") searchPrompt(res.command);
-    else if (res.command === "do-what-it-says") randomSearch();
+  ).then(({command}) => {
+    if (command !== "do-what-it-says" && command !== "exit") searchPrompt(command);
+    else if (command === "do-what-it-says") randomSearch();
   })
 
 }
@@ -164,11 +174,11 @@ const searchPrompt = (promptCommand) => {
     }
   // destructuring inquirer object
   ).then(({search}) => main(promptCommand, search)
-  // main returns promise
+  // main returns promise, which is the then
   ).then(() => promptStart()
   ).catch(err => console.log(err));
 
 }
-// if user types command, it searches
-// else opens inquirer
+// if user types a command, it searches
+// else opens prompt
 userCommand ? main(userCommand, userSearch) : promptStart();
