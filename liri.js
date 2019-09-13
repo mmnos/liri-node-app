@@ -144,7 +144,7 @@ const promptStart = () => {
     {
       name: "command",
       type: "list",
-      message: "What command would you like to search for?",
+      message: "What command would you like to use?",
       choices: ["concert-this", "spotify-this-song", "movie-this", "do-what-it-says", "exit"]
     }
   ).then((res) => {
