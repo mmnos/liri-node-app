@@ -1,184 +1,147 @@
-require("dotenv").config();
+require('dotenv').config();
+const fs = require('fs');
+const axios = require('axios');
+const keys = require('./spotify-keys.js');
+const Spotify = require('node-spotify-api');
+const inquirer = require('inquirer');
+const utils = require('./utils');
 
-const fs = require("fs");
-const axios = require("axios");
-const keys = require("./keys.js");
-const Spotify = require("node-spotify-api");
-const moment = require("moment");
-const inquirer = require("inquirer");
+const spotify = new Spotify(keys.spotify);
 
-let spotify = new Spotify(keys.spotify);
+const userCommand = process.argv[2];
+const userSearch = process.argv.slice(3).join(' ');
 
-let userCommand = process.argv[2];
-let userSearch = process.argv.slice(3).join(" ");
-
-let main = function(userCommand, userSearch) {
-
+const main = (userCommand, userSearch) => {
   // case will be run depending on what user inputs
   // no break statement because we're returning something
   switch (userCommand) {
-
-    case "concert-this":
+    case 'concert-this':
       return searchConcert(userSearch);
 
-    case "spotify-this-song":
+    case 'spotify-this-song':
       return searchSpotify(userSearch);
 
-    case "movie-this":
+    case 'movie-this':
       return searchMovie(userSearch);
 
-    case "do-what-it-says":
+    case 'do-what-it-says':
       return randomSearch();
 
     default:
-      console.log("Invalid command");
-
+      console.log('Invalid command');
   }
-
 };
 
-let searchConcert = function(artist) {
-
-  let bandsURL = `https://rest.bandsintown.com/artists/${artist}/events?app_id=codingbootcamp`;
+// takes user input and gets bands data
+const searchConcert = async (artist) => {
+  const bandsURL = `https://rest.bandsintown.com/artists/${artist}/events?app_id=codingbootcamp`;
 
   // requests data for artist
-  return axios
-    .get(bandsURL)
-    .then(function(response) {
+  const bandsData = await axios.get(bandsURL);
+  const data = bandsData.data[0];
 
-      let data = response.data[0];
-
-      function venueData() {
-        console.log(`
-        Venue : ${data.venue.name}
-        Location : ${data.venue.city}
-        Date : ${moment(data.datetime).format("MM/DD/YYYY")}
-        `);
-      }
-
-      data ? venueData() : console.log("Sorry, they're not on tour :(");
-
-    })
-    .catch(function(error) {
-      // logs error
-      console.log(error);
-    });
+  data
+    ? utils.displayVenueData(data)
+    : console.log("Sorry, they're not on tour :(");
 };
 
-let searchSpotify = function(song) {
+// takes user input and gets music data
+const searchSpotify = async (song) => {
+  let urlArtist = '';
 
-  let urlArtist = "";
   // if no song was entered, defaults to The Sign by Ace
   if (!song) {
-    song = "The Sign";
-    urlArtist = "%20ace";
+    song = 'The Sign';
+    urlArtist = '%20ace';
   }
-  return spotify
-    .request(
-      `https://api.spotify.com/v1/search?q=${song}${urlArtist}&type=track,artist`
-    )
-    .then(function(data) {
 
-      const item = data.tracks.items[0];
-      
-      // displays data for song
-      console.log(`
-      Artist : ${item.artists[0].name}
-      Song : ${item.name}
-      Link : ${item.external_urls.spotify}
-      Album : ${item.album.name}
-      `);
+  const musicURL = `https://api.spotify.com/v1/search?q=${song}${urlArtist}&type=track,artist`;
 
-    }).catch(err => Promise.reject(err))
-  
+  const musicData = await spotify.request(musicURL);
+  // console.log('ITEMS: ', musicData);
+  const item = musicData.tracks.items[0];
+
+  utils.displayMusicData(item);
 };
 
-let searchMovie = function(movie) {
-
+// takes user input and gets movie data
+const searchMovie = async (movie) => {
   // if no movie name was entered, defaults to Mr. Nobody
   if (!movie) {
-    movie = "Mr. Nobody";
+    movie = 'Mr. Nobody';
   }
 
-  let movieURL = `https://www.omdbapi.com/?apikey=trilogy&t=${movie}&type=movie&plot=short`;
+  const movieURL = `https://www.omdbapi.com/?apikey=trilogy&t=${movie}&type=movie&plot=short`;
 
   // requests data from api than displays info
-  return axios.get(movieURL).then(function(response) {
+  const movieData = await axios.get(movieURL);
 
-    console.log(`
-    Title : ${response.data.Title}
-    Release Year : ${response.data.Year}
-    IMDB Rating : ${response.data.Rated}
-    Rotten Tomatoes Rating : ${response.data.Ratings[1].Value}
-    Country : ${response.data.Country}
-    Language : ${response.data.Language}
-    Plot : ${response.data.Plot}
-    Actors : ${response.data.Actors}
-    `);
-
-  });
-
+  utils.displayMovieData(movieData);
 };
 
-let randomSearch = function() {
-
+// gets data from txt file and displays it
+const randomSearch = async () => {
   // gets data from text file
-  return new Promise((resolve, reject) => {
-
-    fs.readFile("random.txt", "utf8", function(err, data) {
+  const getDataFromTextFile = await new Promise((resolve, reject) => {
+    fs.readFile('random.txt', 'utf8', (err, data) => {
       // if error, return reject error (short circuit)
       err && reject(err);
-  
+
       // split content with comma
-      let dataArr = data.split(",");
-  
+      const dataArr = data.split(',');
+
       // returning resolved promise
       return resolve({
-
-        userCommand : dataArr[0],
-        userSearch : dataArr[1]
-
+        userCommand: dataArr[0],
+        userSearch: dataArr[1],
       });
-      
     });
-  // destructuring resolved object
-  }).then(({userCommand, userSearch}) => main(userCommand, userSearch))
-  // main returns promise so we use a then
-  .then(() => promptStart());
+  });
 
+  const { userCommand, userSearch } = getDataFromTextFile;
+
+  await main(userCommand, userSearch);
+  await promptStart();
 };
 
-const promptStart = () => {
+// user chooses if they want to search for a concert, song, movie, or data from txt file
+const promptStart = async () => {
+  const getCommand = await inquirer.prompt({
+    name: 'command',
+    type: 'list',
+    message: 'What command would you like to use?',
+    choices: [
+      'concert-this',
+      'spotify-this-song',
+      'movie-this',
+      'do-what-it-says',
+      'exit',
+    ],
+  });
 
-  inquirer.prompt(
-    {
-      name: "command",
-      type: "list",
-      message: "What command would you like to use?",
-      choices: ["concert-this", "spotify-this-song", "movie-this", "do-what-it-says", "exit"]
-    }
-  ).then(({command}) => {
-    if (command !== "do-what-it-says" && command !== "exit") searchPrompt(command);
-    else if (command === "do-what-it-says") randomSearch();
-  })
+  const { command } = getCommand;
 
-}
+  return command !== 'do-what-it-says' && command !== 'exit'
+    ? searchPrompt(command)
+    : command === 'do-what-it-says'
+    ? randomSearch()
+    : null;
+};
 
-const searchPrompt = (promptCommand) => {
+// user input based on what they're searching for
+const searchPrompt = async (promptCommand) => {
+  const getSearch = await inquirer.prompt({
+    name: 'search',
+    type: 'input',
+    message: 'What would you like to search for?',
+  });
 
-  inquirer.prompt(
-    {
-      name: "search",
-      type: "input",
-      message: "What would you like to search for?"
-    }
-  // destructuring inquirer object
-  ).then(({search}) => main(promptCommand, search)
-  // main returns promise, which is the then
-  ).then(() => promptStart()
-  ).catch(err => console.log(err));
+  const { search } = getSearch;
 
-}
+  await main(promptCommand, search);
+  await promptStart();
+};
+
 // if user types a command, it searches
 // else opens prompt
 userCommand ? main(userCommand, userSearch) : promptStart();
